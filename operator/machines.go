@@ -6,9 +6,8 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
-
-	"github.com/kubicorn/kubicorn/pkg/namer"
 
 	"github.com/kris-nova/logger"
 	"github.com/kubicorn/kubicorn/apis/cluster"
@@ -87,7 +86,13 @@ func addMachine(cm *crdClientMeta) error {
 
 	newMachine := base
 	newMachine.ResourceVersion = ""
-	newMachine.Name = fmt.Sprintf("%s-%s", namer.RandomName(), rndstr(16))
+	name := newMachine.Name
+	prefix := strings.Split(name, "-")
+	if len(prefix) < 2 {
+		return nil
+	}
+	now := time.Now()
+	newMachine.Name = fmt.Sprintf("%s-%d", prefix, now.UnixNano())
 	_, err = cm.client.Machines().Create(&newMachine)
 	return err
 }
