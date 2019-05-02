@@ -7,7 +7,7 @@ NAMESPACE="spark"
 IMAGE="krisnova/spark-cluster-api-operator:latest"
 
 
-make container push
+#make container push
 
 kubectl delete namespace ${NAMESPACE}
 kubectl create namespace ${NAMESPACE}

@@ -25,10 +25,10 @@ func ListenAndWait(cfg *ServerConfiguration) error {
 func requestResources(w http.ResponseWriter, r *http.Request) {
 
 	// Just for testing:
-	UpdateCRDNumberInstances(10)
-	w.WriteHeader(200)
-	w.Write([]byte("Status: OK\n"))
-	return
+	//fmt.Println(UpdateCRDNumberInstances(10))
+	//w.WriteHeader(200)
+	//w.Write([]byte("Status: OK\n"))
+	//return
 
 	decoder := json.NewDecoder(r.Body)
 	mutation := &SparkClusterApiOperatorRequest{}

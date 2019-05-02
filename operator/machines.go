@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/kubicorn/kubicorn/pkg/namer"
 
@@ -48,9 +50,9 @@ func UpdateCRDNumberInstances(n int) error {
 
 	}
 
-	totalMachines := len(machines.Items)
+	totalMachines := len(machines.Items) - 2
 	if totalMachines != n {
-		logger.Always("Total Machines [%d] Expected Machines [%d]")
+		logger.Always("Total Machines [%d] Expected Machines [%d]", totalMachines, n)
 		for totalMachines != n {
 			if totalMachines < n {
 				err := addMachine(cm)
@@ -84,7 +86,8 @@ func addMachine(cm *crdClientMeta) error {
 	base := machines.Items[2] // Grab the third machine
 
 	newMachine := base
-	newMachine.Name = namer.RandomName()
+	newMachine.ResourceVersion = ""
+	newMachine.Name = fmt.Sprintf("%s-%s", namer.RandomName(), rndstr(16))
 	_, err = cm.client.Machines().Create(&newMachine)
 	return err
 }
@@ -101,7 +104,7 @@ func removeMachine(cm *crdClientMeta) error {
 		return nil
 	} else if len(machines.Items) > 3 {
 		machineToDelete := machines.Items[3]
-		_, err = cm.client.Machines().Create(&machineToDelete)
+		err = cm.client.Machines().Delete(machineToDelete.Name, &metav1.DeleteOptions{})
 		return err
 	}
 	return fmt.Errorf("Invalid length of machines")
@@ -155,4 +158,18 @@ func getProviderConfig(providerConfig string) *cluster.MachineProviderConfig {
 	}
 	json.Unmarshal([]byte(providerConfig), &mp)
 	return &mp
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func rndstr(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
