@@ -3,13 +3,14 @@ package operator
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/kris-nova/logger"
-	"net/http"
 )
 
 type ServerConfiguration struct {
-	Port int
+	Port        int
 	BindAddress string
 }
 
@@ -22,6 +23,13 @@ func ListenAndWait(cfg *ServerConfiguration) error {
 }
 
 func requestResources(w http.ResponseWriter, r *http.Request) {
+
+	// Just for testing:
+	UpdateCRDNumberInstances(10)
+	w.WriteHeader(200)
+	w.Write([]byte("Status: OK\n"))
+	return
+
 	decoder := json.NewDecoder(r.Body)
 	mutation := &SparkClusterApiOperatorRequest{}
 	err := decoder.Decode(&mutation)
@@ -35,8 +43,8 @@ func requestResources(w http.ResponseWriter, r *http.Request) {
 
 	// Todo Nova - Set this to the size of whatever instance we are using
 	serverSize := &SparkClusterApiOperatorRequest{
-		CPUCount: 1,
-		MemoryMBs: 1000,
+		CPUCount:       1,
+		MemoryMBs:      1000,
 		ContainerCount: 1,
 	}
 	numInstances := ComputeNumberOfExpectedInstances(serverSize, mutation)

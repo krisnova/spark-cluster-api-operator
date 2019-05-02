@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/kubicorn/kubicorn/pkg/namer"
+
 	"github.com/kris-nova/logger"
 	"github.com/kubicorn/kubicorn/apis/cluster"
 
@@ -31,7 +33,7 @@ func UpdateCRDNumberInstances(n int) error {
 		return fmt.Errorf("Missing environmental variable [KUBECONFIG_CONTENT]")
 	}
 
-	cfg := &ServerConfiguration{
+	cfg := &ServiceConfiguration{
 		KubeConfigContent: kubeConfigContent,
 	}
 
@@ -46,9 +48,63 @@ func UpdateCRDNumberInstances(n int) error {
 
 	}
 
-	totalMachines := len(machines)
+	totalMachines := len(machines.Items)
+	if totalMachines != n {
+		logger.Always("Total Machines [%d] Expected Machines [%d]")
+		for totalMachines != n {
+			if totalMachines < n {
+				err := addMachine(cm)
+				if err != nil {
+					return err
+				}
+			} else if totalMachines > n {
+				removeMachine(cm)
+				if err != nil {
+					return err
+				}
+			} else {
+				break
+			}
+		}
+	}
 
 	return nil
+}
+
+func addMachine(cm *crdClientMeta) error {
+	listOptions := metav1.ListOptions{}
+	machines, err := cm.client.Machines().List(listOptions)
+	if err != nil {
+		return fmt.Errorf("Unable to list machines: %v", err)
+
+	}
+	if len(machines.Items) < 3 {
+		return fmt.Errorf("Unable to find base machine")
+	}
+	base := machines.Items[2] // Grab the third machine
+
+	newMachine := base
+	newMachine.Name = namer.RandomName()
+	_, err = cm.client.Machines().Create(&newMachine)
+	return err
+}
+
+func removeMachine(cm *crdClientMeta) error {
+	listOptions := metav1.ListOptions{}
+	machines, err := cm.client.Machines().List(listOptions)
+	if err != nil {
+		return fmt.Errorf("Unable to list machines: %v", err)
+
+	}
+	if len(machines.Items) == 3 {
+		// Always leave one hanging around
+		return nil
+	} else if len(machines.Items) > 3 {
+		machineToDelete := machines.Items[3]
+		_, err = cm.client.Machines().Create(&machineToDelete)
+		return err
+	}
+	return fmt.Errorf("Invalid length of machines")
 }
 
 func (s *ServiceConfiguration) GetFilePath() (string, error) {
@@ -68,7 +124,7 @@ type crdClientMeta struct {
 	clientset *apiextensionsclient.Clientset
 }
 
-func getClientMeta(cfg *ServerConfiguration) (*crdClientMeta, error) {
+func getClientMeta(cfg *ServiceConfiguration) (*crdClientMeta, error) {
 	kubeConfigPath, err := cfg.GetFilePath()
 	if err != nil {
 		return nil, err
